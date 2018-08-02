@@ -1,0 +1,23 @@
+Private Sub SetViewStateUserKeyAndResponseCookie()
+        _validator = New CsrfAttackValidator()
+        Dim userViewStateKey = _validator.GetViewStateUserKey(Request)
+
+        If Not String.IsNullOrEmpty(userViewStateKey) Then
+            ViewStateUserKey = userViewStateKey
+        Else
+            Dim responseCookie As HttpCookie
+            Page.ViewStateUserKey = _validator.GetNewAntiXsrfToken(Request, responseCookie)
+            Response.Cookies.[Set](responseCookie)
+        End If
+
+        Page.PreLoad += AddressOf PageOnPreLoad
+    End Sub
+
+    Private Sub PageOnPreLoad(ByVal sender As Object, ByVal eventArgs As EventArgs)
+        If Not Page.IsPostBack Then
+            ViewState(_validator.GetAntiXsrfTokenKey()) = Page.ViewStateUserKey
+            ViewState(_validator.GetAntiXsrfUserNameKey()) = If(Context.User.Identity.Name, String.Empty)
+        Else
+            _validator.ValidateAntiXsrfTokenAndUserNameOnPageLoad(Context, ViewState)
+        End If
+    End Sub
